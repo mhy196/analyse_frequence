@@ -20,27 +20,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🌊 Suivi des Crises Hydrologiques (Aïn Aïcha)")
-st.markdown("Outil d'aide à la décision : Analyse de la fréquence et de la récurrence des événements extrêmes.")
-st.write("---")
-
-# --- CHARGEMENT DES DONNÉES ---
-@st.cache_data
-def load_data():
-    df = pd.read_excel("Ain Aisha.xls", sheet_name='qm', header=6)
-    df = df.dropna(subset=['Année'])
-    mois = ['Septembre', 'Octobre', 'Novembre', 'Décembre', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août']
-    df[mois] = df[mois].fillna(0) 
-    return df, mois
-
-try:
-    df, mois = load_data()
-except Exception as e:
-    st.error(f"Erreur lors du chargement : {e}")
-    st.stop()
-
-# --- BARRE LATÉRALE ---
+# --- BARRE LATÉRALE (CHOIX DE LA STATION ET PARAMÈTRES) ---
 st.sidebar.header("⚙️ Paramétrage")
+
+station_choisie = st.sidebar.selectbox(
+    "📍 Station hydrologique étudiée",
+    options=["Aïn Aïcha", "Azib Soltane"]
+)
+
 st.sidebar.write("Ajustez les critères ci-dessous pour actualiser l'analyse.")
 
 percentile_threshold = st.sidebar.slider(
@@ -54,6 +41,33 @@ aggregation_method = st.sidebar.selectbox(
     options=["Moyenne annuelle (Module)", "Maximum mensuel absolu"],
     help="Analyser l'année sur sa moyenne globale ou sur son mois le plus extrême."
 )
+
+# --- TITRE DYNAMIQUE ---
+st.title(f"🌊 Suivi des Crises Hydrologiques ({station_choisie})")
+st.markdown("Outil d'aide à la décision : Analyse de la fréquence et de la récurrence des événements extrêmes.")
+st.write("---")
+
+# --- CHARGEMENT DES DONNÉES (DYNAMIQUE) ---
+@st.cache_data
+def load_data(fichier):
+    df = pd.read_excel(fichier, sheet_name='qm', header=6)
+    df = df.dropna(subset=['Année'])
+    mois = ['Septembre', 'Octobre', 'Novembre', 'Décembre', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août']
+    df[mois] = df[mois].fillna(0) 
+    return df, mois
+
+# Sélection du fichier en fonction de la station
+if station_choisie == "Aïn Aïcha":
+    fichier_excel = "Ain Aisha.xls"
+else:
+    fichier_excel = "Azib Soltane.xls"
+
+try:
+    df, mois = load_data(fichier_excel)
+except Exception as e:
+    st.error(f"Erreur lors du chargement du fichier {fichier_excel} : {e}")
+    st.info("💡 Assurez-vous que le fichier est bien présent dans le dossier sur GitHub.")
+    st.stop()
 
 # --- LOGIQUE DYNAMIQUE (UNITÉS ET CALCULS) ---
 if aggregation_method == "Moyenne annuelle (Module)":
