@@ -117,21 +117,33 @@ with tab1:
     st.pyplot(fig)
 
 with tab2:
+    st.caption("Catégorisation des années selon leur déclenchement.")
     fig2, ax2 = plt.subplots(figsize=(8, 4))
+    
+    # NOUVELLE LOGIQUE : Plus simple et directement liée aux indicateurs
     conditions = [
-        (~df['Est_Extreme']),
-        (df['Est_Extreme'] & ~df['Extreme_Precedent'] & ~df['Est_Extreme'].shift(-1, fill_value=False)),
-        (df['Successif_2_Ans'] | (df['Est_Extreme'] & df['Est_Extreme'].shift(-1, fill_value=False)))
+        (~df['Est_Extreme']),                                     # 1. Sous le seuil
+        (df['Est_Extreme'] & ~df['Extreme_Precedent']),           # 2. Première année de crise (isolée ou début)
+        (df['Successif_2_Ans'])                                   # 3. 2ème année ou plus (La récurrence)
     ]
-    choices = ['Année Normale', 'Crise Isolée', 'Crise Prolongée']
+    choices = ['Année Normale', 'Nouvelle Crise (1ère année)', 'Crise Récurrente (Suite)']
     df['Categorie'] = np.select(conditions, choices, default='Année Normale')
 
-    sns.countplot(data=df, x='Categorie', order=choices, palette=['#BAE6FD', '#FDBA74', '#991B1B'], ax=ax2)
+    # Création du graphique avec les nouvelles couleurs
+    sns.countplot(data=df, x='Categorie', order=choices, palette=['#BAE6FD', '#F59E0B', '#991B1B'], ax=ax2)
+    
     ax2.set_ylabel("Nombre d'années", color='#475569')
     ax2.set_xlabel("")
     ax2.tick_params(colors='#475569')
+    
+    # Ajout des chiffres sur les barres
     for p in ax2.patches:
-        ax2.annotate(format(p.get_height(), '.0f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center', va = 'center', xytext = (0, 9), textcoords = 'offset points', color='#1E293B', fontweight='bold')
+        ax2.annotate(format(p.get_height(), '.0f'), 
+                     (p.get_x() + p.get_width() / 2., p.get_height()), 
+                     ha = 'center', va = 'center', 
+                     xytext = (0, 9), textcoords = 'offset points',
+                     color='#1E293B', fontweight='bold')
+
     sns.despine(left=True, bottom=True)
     st.pyplot(fig2)
 
