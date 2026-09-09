@@ -93,6 +93,31 @@ nb_successifs = df['Successif_2_Ans'].sum()
 
 prob_extreme = nb_annees_extremes / nb_total_annees
 prob_conditionnelle = (nb_successifs / df['Extreme_Precedent'].sum()) if df['Extreme_Precedent'].sum() > 0 else 0.0
+nb_total_annees = len(df)
+nb_annees_extremes = df['Est_Extreme'].sum()
+nb_successifs = df['Successif_2_Ans'].sum()
+
+prob_extreme = nb_annees_extremes / nb_total_annees
+prob_conditionnelle = (nb_successifs / df['Extreme_Precedent'].sum()) if df['Extreme_Precedent'].sum() > 0 else 0.0
+
+# --- NOUVEAU : CALCULS PRÉDICTIFS ANTICIPÉS ---
+# 1. Autocorrélation
+autocorr_val = df['Valeur_Analyse'].autocorr(lag=1)
+seuil_significativite = 1.96 / np.sqrt(nb_total_annees)
+
+# 2. Wald-Wolfowitz (Runs et Z-score)
+runs = 1
+for i in range(1, nb_total_annees):
+    if df['Est_Extreme'].iloc[i] != df['Est_Extreme'].iloc[i-1]:
+        runs += 1
+n1 = nb_annees_extremes
+n2 = nb_total_annees - n1
+n = nb_total_annees
+esp_runs = ((2 * n1 * n2) / n) if n > 0 else 1
+esp_runs += 1
+var_runs = (2 * n1 * n2 * (2 * n1 * n2 - n)) / ((n ** 2) * (n - 1)) if n > 1 else 1
+std_runs = np.sqrt(var_runs) if var_runs > 0 else 1
+z_score = (runs - esp_runs) / std_runs
 
 # --- INDICATEURS CLÉS ---
 col1, col2, col3 = st.columns(3)
@@ -100,7 +125,32 @@ col1.metric(f"Seuil d'alerte", f"{threshold_value:.1f} {unite}")
 col2.metric("Années critiques", f"{nb_annees_extremes} / {nb_total_annees}")
 col3.metric("Récurrences (2 ans de suite)", f"{nb_successifs}")
 
-st.info(f"💡 **Synthèse :** Historiquement, une année a **{prob_extreme * 100:.1f}%** de chances d'être critique. Si l'on a pu observer par le passé que {prob_conditionnelle * 100:.1f}% de ces crises ont été consécutives, l'analyse démontre qu'il n'y a pas de cycle continu. La probabilité d'avoir une crue l'an prochain redescend à sa normale statistique de **{prob_extreme * 100:.1f}%**.")
+# --- INDICATEURS CLÉS ---
+col1, col2, col3 = st.columns(3)
+col1.metric(f"Seuil d'alerte", f"{threshold_value:.1f} {unite}")
+col2.metric("Années critiques", f"{nb_annees_extremes} / {nb_total_annees}")
+col3.metric("Récurrences (2 ans de suite)", f"{nb_successifs}")
+
+# --- NOUVEAU : SYNTHÈSE DYNAMIQUE INTELLIGENTE ---
+# Z-score négatif = Les événements sont regroupés (Clustering). Z-score positif = Ils s'alternent trop.
+if autocorr_val > seuil_significativite or z_score < -1.96:
+    message_synthese = (f"💡 **Synthèse des Risques :** Historiquement, une année a **{prob_extreme * 100:.1f}%** de chances d'être critique. "
+                        f"L'analyse mathématique prouve que ce bassin possède une **mémoire hydrologique** (les crues ont tendance à s'attirer). "
+                        f"Puisque {prob_conditionnelle * 100:.1f}% des crises ont été consécutives par le passé, cette statistique ne doit pas être ignorée. "
+                        f"Si l'année en cours est critique, le risque prédictif d'en subir une nouvelle l'an prochain reste très élevé (**~ {prob_conditionnelle * 100:.1f}%**).")
+
+elif autocorr_val < -seuil_significativite or z_score > 1.96:
+    message_synthese = (f"💡 **Synthèse des Risques :** Historiquement, une année a **{prob_extreme * 100:.1f}%** de chances d'être critique. "
+                        f"Les tests statistiques montrent un phénomène d'**alternance** sur ce bassin : une crise est rarement suivie d'une autre crise. "
+                        f"Le risque de subir une crue consécutive l'an prochain est donc statistiquement très faible, bien en dessous de sa probabilité normale.")
+
+else:
+    message_synthese = (f"💡 **Synthèse des Risques :** Historiquement, une année a **{prob_extreme * 100:.1f}%** de chances d'être critique. "
+                        f"Si l'on a pu observer par le passé que {prob_conditionnelle * 100:.1f}% de ces crises ont été consécutives, les tests formels démontrent qu'il s'agit d'une simple coïncidence. "
+                        f"Les années sont indépendantes. La probabilité d'avoir une crue l'an prochain redescend à sa normale statistique de **{prob_extreme * 100:.1f}%**.")
+
+st.info(message_synthese)
+st.write("---")
 st.write("---")
 
 # --- ONGLETS ---
