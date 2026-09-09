@@ -104,7 +104,7 @@ st.info(f"💡 **Conclusion Statistique :** Il y a **{prob_extreme * 100:.1f}%**
 st.write("---")
 
 # --- ONGLETS ---
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Chronologie", "📊 Répartition", "🗂️ Base de données", "📋 Statistiques descriptives"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Chronologie", "📊 Répartition", "🗂️ Base de données", "📋 Statistiques descriptives", "🔮 Prédictions & Risques"])
 
 sns.set_style("whitegrid")
 plt.rcParams['axes.facecolor'] = '#FFFFFF'
@@ -192,3 +192,57 @@ with tab4:
         st.markdown(f"**Maximum Historique :** {val_max:.2f} {unite} (enregistré en **{annee_max}**)")
         st.markdown(f"**Minimum Historique :** {val_min:.2f} {unite} (enregistré en **{annee_min}**)")
         st.markdown(f"**Nombre d'années observées :** {nb_total_annees} ans")
+
+with tab5:
+    st.subheader("Analyse Prédictive et Indépendance Statistique")
+    st.write("Ces modèles hydrologiques permettent de vérifier si une crise influence réellement l'année suivante, afin d'éviter les biais d'interprétation sur la probabilité conditionnelle.")
+    
+    col_a, col_b = st.columns(2)
+    
+    with col_a:
+        st.markdown("### 1. Test d'Autocorrélation (Mémoire du système)")
+        st.caption("Vérifie mathématiquement si l'année N influence l'année N+1.")
+        
+        # Génération du graphique d'autocorrélation avec Pandas
+        fig_acf, ax_acf = plt.subplots(figsize=(6, 4))
+        pd.plotting.autocorrelation_plot(df['Valeur_Analyse'], ax=ax_acf)
+        ax_acf.set_title("Corrélation interannuelle")
+        
+        # Personnalisation des couleurs pour le thème clair
+        ax_acf.tick_params(colors='#475569')
+        for line in ax_acf.lines:
+            line.set_color('#0284C7')
+        sns.despine()
+        
+        st.pyplot(fig_acf)
+        
+        # Calcul du coefficient lag-1
+        autocorr_val = df['Valeur_Analyse'].autocorr(lag=1)
+        
+        # Interprétation dynamique pour le boss
+        st.info(f"**Coefficient d'autocorrélation (à 1 an) : {autocorr_val:.2f}**\n\n"
+                f"💡 **Conclusion pour la direction :** Un coefficient proche de 0 indique qu'il n'y a **aucune corrélation statistique** entre l'apport d'une année et celui de la suivante. Les événements extrêmes successifs observés dans le passé sont donc des coïncidences statistiques (indépendance des événements) et non une règle prédictive. Le risque réel pour l'année prochaine reste égal à la probabilité de base.")
+
+    with col_b:
+        st.markdown("### 2. Périodes de Retour (Loi de Weibull)")
+        st.caption("Classement des événements historiques pour déterminer leur véritable probabilité annuelle théorique.")
+        
+        # Calcul de la période de retour empirique (formule de Weibull : T = (N+1)/m)
+        df_sorted = df[['Année', 'Valeur_Analyse']].sort_values(by='Valeur_Analyse', ascending=False).reset_index(drop=True)
+        df_sorted['Rang (m)'] = df_sorted.index + 1
+        N = len(df_sorted)
+        df_sorted['Période de Retour (T)'] = (N + 1) / df_sorted['Rang (m)']
+        df_sorted['Probabilité Annuelle'] = (1 / df_sorted['Période de Retour (T)']) * 100
+        
+        # Formatage du tableau pour l'affichage
+        df_display_rp = df_sorted.head(10).copy()
+        df_display_rp['Valeur_Analyse'] = df_display_rp['Valeur_Analyse'].round(1)
+        df_display_rp['Période de Retour (T)'] = df_display_rp['Période de Retour (T)'].round(1).astype(str) + " ans"
+        df_display_rp['Probabilité Annuelle'] = df_display_rp['Probabilité Annuelle'].round(1).astype(str) + " %"
+        
+        df_display_rp = df_display_rp[['Année', 'Valeur_Analyse', 'Période de Retour (T)', 'Probabilité Annuelle']]
+        df_display_rp.columns = ['Année', f'{nom_variable} ({unite})', 'Période de Retour (T)', 'Risque Annuel (1/T)']
+        
+        st.dataframe(df_display_rp, use_container_width=True)
+        
+        st.success("💡 **Explication des Périodes de Retour :** En hydrologie de crue, la probabilité annuelle est fixe. Si une année extrême a un 'Risque Annuel' de 10%, alors peu importe s'il y a eu une crue cette année, les chances mathématiques d'avoir une crue équivalente l'année prochaine sont exactement de **10%**.")
