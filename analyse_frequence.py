@@ -251,6 +251,18 @@ with tab5:
     st.write("---")
     st.markdown("### 3. Test de Hasard des Séquences (Test de Wald-Wolfowitz)")
     st.caption("Évalue mathématiquement si l'apparition de crises consécutives (le phénomène des '2 ans') est une anomalie climatique ou une simple coïncidence statistique.")
+    st.info("💡 **Le fonctionnement mathématique du test (L'analogie de la pièce) :**\n\n"
+            "Imaginez que chaque année, la nature lance une pièce de monnaie (*Pile* = Année Normale, *Face* = Crise). "
+            "Même avec une pièce parfaitement équilibrée, il arrivera de faire *Face* deux fois de suite par pur hasard.\n\n"
+            "Le test de Wald-Wolfowitz compte le nombre réel d'alternances ($R$) entre ces deux états. "
+            "Pour savoir si ce nombre est purement aléatoire, l'algorithme calcule d'abord l'espérance mathématique, c'est-à-dire le nombre théorique d'alternances attendu :\n\n"
+            "$$E(R) = \\frac{2 n_1 n_2}{n} + 1$$\n\n"
+            "*(Où $n_1$ est le nombre d'années critiques, $n_2$ le nombre d'années normales, et $n$ le nombre total d'années).* \n\n"
+            "Il détermine ensuite la variance, qui représente la marge de fluctuation naturelle autorisée pour ce hasard :\n\n"
+            "$$Var(R) = \\frac{2 n_1 n_2 (2 n_1 n_2 - n)}{n^2 (n - 1)}$$\n\n"
+            "Enfin, on mesure l'écart exact entre notre historique et la théorie absolue grâce au Score Z :\n\n"
+            "$$Z = \\frac{R - E(R)}{\\sqrt{Var(R)}}$$\n\n"
+            "Si la valeur de $Z$ se situe entre -1.96 et 1.96, la théorie se confirme : avoir deux crises consécutives n'est pas le fruit d'un cycle climatique dangereux, mais simplement un 'double Face' accidentel.")
     
     # 1. Calcul du nombre de séquences (Runs) réelles
     runs = 1
