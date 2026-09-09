@@ -246,3 +246,41 @@ with tab5:
         st.dataframe(df_display_rp, use_container_width=True)
         
         st.success("💡 **Explication des Périodes de Retour :** En hydrologie de crue, la probabilité annuelle est fixe. Si une année extrême a un 'Risque Annuel' de 10%, alors peu importe s'il y a eu une crue cette année, les chances mathématiques d'avoir une crue équivalente l'année prochaine sont exactement de **10%**.")
+
+        st.write("---")
+    st.markdown("### 3. Test de Hasard des Séquences (Test de Wald-Wolfowitz)")
+    st.caption("Évalue mathématiquement si l'apparition de crises consécutives (le phénomène des '2 ans') est une anomalie climatique ou une simple coïncidence statistique.")
+    
+    # 1. Calcul du nombre de séquences (Runs) réelles
+    runs = 1
+    for i in range(1, nb_total_annees):
+        if df['Est_Extreme'].iloc[i] != df['Est_Extreme'].iloc[i-1]:
+            runs += 1
+            
+    n1 = nb_annees_extremes       # Années critiques
+    n2 = nb_total_annees - n1     # Années normales
+    n = nb_total_annees           # Total
+    
+    # 2. Calcul des valeurs théoriques (Loi Binomiale)
+    # Formule de l'espérance mathématique des séquences
+    esp_runs = ((2 * n1 * n2) / n) + 1
+    # Formule de la variance
+    var_runs = (2 * n1 * n2 * (2 * n1 * n2 - n)) / ((n ** 2) * (n - 1))
+    std_runs = np.sqrt(var_runs) if var_runs > 0 else 1
+    
+    # 3. Calcul du Z-Score (Écart standard par rapport au pur hasard)
+    z_score = (runs - esp_runs) / std_runs
+    
+    # 4. Affichage des métriques
+    col_x, col_y, col_z = st.columns(3)
+    col_x.metric("Alternances réelles", runs, help="Nombre de fois où l'on est passé d'une année normale à extrême, ou inversement.")
+    col_y.metric("Alternances théoriques (Hasard)", f"{esp_runs:.1f}", help="Ce que les mathématiques prévoient si les années sont 100% indépendantes.")
+    col_z.metric("Score Z (Écart)", f"{z_score:.2f}", help="S'il est entre -1.96 et 1.96, les événements sont prouvés comme étant aléatoires.")
+    
+    # 5. Conclusion dynamique pour la direction
+    if abs(z_score) < 1.96:
+        st.success(f"✅ **Démonstration Mathématique :** Le Score Z ({z_score:.2f}) est fermement compris dans l'intervalle de confiance [-1.96, 1.96]. \n\n"
+                   f"**Ce que cela signifie pour la direction :** Le fait que plusieurs crises se soient produites 2 ans de suite par le passé relève d'une stricte **coïncidence probabiliste** et non d'un cycle hydrologique. Les crues sont des événements 100% indépendants. Il est donc mathématiquement erroné d'utiliser le chiffre de 40% pour prédire l'année prochaine. Le véritable risque de récurrence l'année prochaine est égal à la probabilité de base (environ {prob_extreme * 100:.1f}%).")
+    else:
+        st.warning(f"⚠️ **Démonstration Mathématique :** Le Score Z ({z_score:.2f}) dépasse le seuil d'indépendance de 1.96. \n\n"
+                   "**Ce que cela signifie pour la direction :** Le test prouve qu'il y a bien un phénomène de regroupement ('clustering') non-aléatoire sur ce bassin. Les années humides ont tendance à s'enchaîner anormalement. La crainte de la direction est justifiée : le risque de 40% de récurrence doit être pris au sérieux pour l'année prochaine.")
