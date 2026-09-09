@@ -219,10 +219,30 @@ with tab5:
         # Calcul du coefficient lag-1
         autocorr_val = df['Valeur_Analyse'].autocorr(lag=1)
         
-        # Interprétation dynamique pour le boss
-        st.info(f"**Coefficient d'autocorrélation (à 1 an) : {autocorr_val:.2f}**\n\n"
-                f"💡 **Conclusion pour la direction :** Un coefficient proche de 0 indique qu'il n'y a **aucune corrélation statistique** entre l'apport d'une année et celui de la suivante. Les événements extrêmes successifs observés dans le passé sont donc des coïncidences statistiques (indépendance des événements) et non une règle prédictive. Le risque réel pour l'année prochaine reste égal à la probabilité de base.")
+        # Calcul du seuil de significativité statistique (Intervalle de confiance à 95%)
+        seuil_significativite = 1.96 / np.sqrt(nb_total_annees)
+        
+        # Génération dynamique de la conclusion selon la valeur
+        if autocorr_val > seuil_significativite:
+            interpretation = (f"Le coefficient ({autocorr_val:.2f}) est positif et dépasse le seuil critique (+{seuil_significativite:.2f}). "
+                              "Cela prouve qu'il y a une **mémoire du système** : une année de crue a effectivement tendance à être suivie d'une autre année humide (effet de persistance, nappes phréatiques saturées, etc.). "
+                              "Dans ce cas précis, la crainte de la direction est justifiée : le risque de récurrence (40%) a une réalité physique et doit être pris au sérieux.")
+        elif autocorr_val < -seuil_significativite:
+            interpretation = (f"Le coefficient ({autocorr_val:.2f}) est négatif et dépasse le seuil critique (-{seuil_significativite:.2f}). "
+                              "Cela prouve une **alternance cyclique** : le système se compense (une crise est souvent suivie d'une année calme/sèche). "
+                              "Le risque d'avoir deux crues d'affilée est donc mathématiquement bien plus faible que la normale.")
+        else:
+            interpretation = (f"Le coefficient ({autocorr_val:.2f}) reste à l'intérieur de la zone de hasard (entre -{seuil_significativite:.2f} et +{seuil_significativite:.2f}). "
+                              "Cela indique qu'il n'y a **aucune corrélation statistique forte** d'une année sur l'autre. "
+                              "Les crises successives passées sont des coïncidences (événements indépendants). Le risque pour l'année prochaine reste égal à la probabilité de base.")
 
+        # Affichage du bloc avec les références
+        st.info(f"**Coefficient d'autocorrélation (à 1 an) : {autocorr_val:.2f}**\n\n"
+                f"📊 **Valeurs de référence (Seuil d'alerte pour {nb_total_annees} ans : ±{seuil_significativite:.2f}) :**\n"
+                f"- **Autour de 0 ( < {seuil_significativite:.2f} )** : Indépendance totale (hasard pur).\n"
+                f"- **Positif ( > +{seuil_significativite:.2f} )** : Effet de persistance (les crises s'attirent).\n"
+                f"- **Négatif ( < -{seuil_significativite:.2f} )** : Effet d'alternance (les crises repoussent les crises).\n\n"
+                f"💡 **Conclusion pour la direction :** {interpretation}")
     with col_b:
         st.markdown("### 2. Périodes de Retour (Loi de Weibull)")
         st.caption("Classement des événements historiques pour déterminer leur véritable probabilité annuelle théorique.")
@@ -245,8 +265,12 @@ with tab5:
         
         st.dataframe(df_display_rp, use_container_width=True)
         
-        st.success("💡 **Explication des Périodes de Retour :** En hydrologie de crue, la probabilité annuelle est fixe. Si une année extrême a un 'Risque Annuel' de 10%, alors peu importe s'il y a eu une crue cette année, les chances mathématiques d'avoir une crue équivalente l'année prochaine sont exactement de **10%**.")
-
+        st.success("💡 **Comment fonctionne la Loi de Weibull (Périodes de Retour) :**\n\n"
+                   "La formule de Weibull est le standard international en hydrologie pour évaluer la rareté d'une crue. Voici sa logique en 3 étapes :\n\n"
+                   "1. **Le Classement :** L'algorithme prend notre historique complet et classe chaque année de la plus extrême (rang $m = 1$) à la plus faible.\n"
+                   "2. **Le Calcul :** Il détermine la Période de Retour théorique ($T$) via la formule **$T = \\frac{N + 1}{m}$** (où $N$ est le nombre total d'années d'observation).\n"
+                   "3. **Le Risque Annuel :** L'inverse de cette période ($1/T$) nous donne la véritable probabilité annuelle de l'événement.\n\n"
+                   "**Conclusion pour la direction :** L'hydrologie n'a pas de 'mémoire'. Si le tableau indique qu'une crue passée est un événement décennal (Période = 10 ans), cela ne signifie pas qu'il faut attendre 10 ans pour la revoir, mais qu'elle a **exactement 10% de probabilité de se produire à chaque nouvelle année**, indépendamment de ce qui s'est passé hier. Ce tableau vous fournit donc le véritable 'risque fondamental' pour chaque seuil de gravité.")
         st.write("---")
     st.write("---")
     st.markdown("### 3. Test de Hasard des Séquences (Test de Wald-Wolfowitz)")
