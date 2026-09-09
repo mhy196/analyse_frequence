@@ -125,12 +125,6 @@ col1.metric(f"Seuil d'alerte", f"{threshold_value:.1f} {unite}")
 col2.metric("Années critiques", f"{nb_annees_extremes} / {nb_total_annees}")
 col3.metric("Récurrences (2 ans de suite)", f"{nb_successifs}")
 
-# --- INDICATEURS CLÉS ---
-col1, col2, col3 = st.columns(3)
-col1.metric(f"Seuil d'alerte", f"{threshold_value:.1f} {unite}")
-col2.metric("Années critiques", f"{nb_annees_extremes} / {nb_total_annees}")
-col3.metric("Récurrences (2 ans de suite)", f"{nb_successifs}")
-
 # --- NOUVEAU : SYNTHÈSE DYNAMIQUE INTELLIGENTE ---
 # Z-score négatif = Les événements sont regroupés (Clustering). Z-score positif = Ils s'alternent trop.
 if autocorr_val > seuil_significativite or z_score < -1.96:
