@@ -100,7 +100,7 @@ col1.metric(f"Seuil d'alerte", f"{threshold_value:.1f} {unite}")
 col2.metric("Années critiques", f"{nb_annees_extremes} / {nb_total_annees}")
 col3.metric("Récurrences (2 ans de suite)", f"{nb_successifs}")
 
-st.info(f"💡 **Conclusion Statistique :** Il y a **{prob_extreme * 100:.1f}%** de chances d'avoir une année critique de manière globale. Toutefois, si une année critique survient, le risque de subir une seconde année critique immédiatement après s'élève à **{prob_conditionnelle * 100:.1f}%**.")
+st.info(f"💡 **Synthèse :** Historiquement, une année a **{prob_extreme * 100:.1f}%** de chances d'être critique. Si l'on a pu observer par le passé que {prob_conditionnelle * 100:.1f}% de ces crises ont été consécutives, l'analyse démontre qu'il n'y a pas de cycle continu. La probabilité d'avoir une crue l'an prochain redescend à sa normale statistique de **{prob_extreme * 100:.1f}%**.")
 st.write("---")
 
 # --- ONGLETS ---
@@ -248,39 +248,64 @@ with tab5:
         st.success("💡 **Explication des Périodes de Retour :** En hydrologie de crue, la probabilité annuelle est fixe. Si une année extrême a un 'Risque Annuel' de 10%, alors peu importe s'il y a eu une crue cette année, les chances mathématiques d'avoir une crue équivalente l'année prochaine sont exactement de **10%**.")
 
         st.write("---")
-    st.markdown("### 3. Test de Hasard des Séquences (Test de Wald-Wolfowitz)")
-    st.caption("Évalue mathématiquement si l'apparition de crises consécutives (le phénomène des '2 ans') est une anomalie climatique ou une simple coïncidence statistique.")
+        st.write("---")
+        st.markdown("### 3. Test de Hasard des Séquences (Test de Wald-Wolfowitz)")
+        st.caption("Évalue mathématiquement si l'apparition de crises consécutives (le phénomène des '2 ans') est une anomalie climatique ou une simple coïncidence statistique.")
+        
+        # 1. Calcul du nombre de séquences (Runs) réelles
+        runs = 1
+        for i in range(1, nb_total_annees):
+            if df['Est_Extreme'].iloc[i] != df['Est_Extreme'].iloc[i-1]:
+                runs += 1
+                
+        n1 = nb_annees_extremes       # Années critiques
+        n2 = nb_total_annees - n1     # Années normales
+        n = nb_total_annees           # Total
+        
+        # 2. Calcul des valeurs théoriques (Loi Binomiale)
+        esp_runs = ((2 * n1 * n2) / n) + 1
+        var_runs = (2 * n1 * n2 * (2 * n1 * n2 - n)) / ((n ** 2) * (n - 1))
+        std_runs = np.sqrt(var_runs) if var_runs > 0 else 1
+        
+        # 3. Calcul du Z-Score
+        z_score = (runs - esp_runs) / std_runs
+        
+        # 4. Affichage des métriques
+        col_x, col_y, col_z = st.columns(3)
+        col_x.metric("Alternances réelles", runs, help="Nombre de fois où l'on est passé d'une année normale à extrême, ou inversement.")
+        col_y.metric("Alternances théoriques (Hasard)", f"{esp_runs:.1f}", help="Ce que les mathématiques prévoient si les années sont 100% indépendantes.")
+        col_z.metric("Score Z (Écart)", f"{z_score:.2f}", help="S'il est entre -1.96 et 1.96, les événements sont prouvés comme étant aléatoires.")
+        
+        # --- 5. NOUVEAU : GRAPHIQUE D'ILLUSTRATION DU TEST ---
+        fig3, ax3 = plt.subplots(figsize=(10, 3.5))
+        
+        # Création de la courbe en cloche (distribution théorique)
+        x = np.linspace(esp_runs - 4*std_runs, esp_runs + 4*std_runs, 500)
+        y = (1 / (std_runs * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x - esp_runs) / std_runs)**2)
+        ax3.plot(x, y, color='#94A3B8', linewidth=2)
+        
+        # Zone de confiance (Hasard validé)
+        x_fill = np.linspace(esp_runs - 1.96*std_runs, esp_runs + 1.96*std_runs, 500)
+        y_fill = (1 / (std_runs * np.sqrt(2 * np.pi))) * np.exp(-0.5 * ((x_fill - esp_runs) / std_runs)**2)
+        ax3.fill_between(x_fill, y_fill, color='#E0F2FE', alpha=0.8, label="Zone de pur hasard statistique")
+        
+        # Placement de l'historique réel
+        ax3.axvline(x=esp_runs, color='#94A3B8', linestyle=':', linewidth=1.5, label=f"Moyenne théorique ({esp_runs:.1f})")
+        ax3.axvline(x=runs, color='#EF4444', linestyle='-', linewidth=3, label=f"Notre historique ({runs} alternances)")
+        
+        ax3.set_yticks([]) # On cache l'axe Y car la densité n'est pas pertinente pour un public non technique
+        ax3.set_xlabel("Nombre d'alternances", color='#475569')
+        ax3.tick_params(colors='#475569')
+        ax3.legend(loc='upper right', facecolor='#FFFFFF', edgecolor='#E2E8F0')
+        sns.despine(left=True)
+        
+        st.pyplot(fig3)
+        # -----------------------------------------------------
     
-    # 1. Calcul du nombre de séquences (Runs) réelles
-    runs = 1
-    for i in range(1, nb_total_annees):
-        if df['Est_Extreme'].iloc[i] != df['Est_Extreme'].iloc[i-1]:
-            runs += 1
-            
-    n1 = nb_annees_extremes       # Années critiques
-    n2 = nb_total_annees - n1     # Années normales
-    n = nb_total_annees           # Total
-    
-    # 2. Calcul des valeurs théoriques (Loi Binomiale)
-    # Formule de l'espérance mathématique des séquences
-    esp_runs = ((2 * n1 * n2) / n) + 1
-    # Formule de la variance
-    var_runs = (2 * n1 * n2 * (2 * n1 * n2 - n)) / ((n ** 2) * (n - 1))
-    std_runs = np.sqrt(var_runs) if var_runs > 0 else 1
-    
-    # 3. Calcul du Z-Score (Écart standard par rapport au pur hasard)
-    z_score = (runs - esp_runs) / std_runs
-    
-    # 4. Affichage des métriques
-    col_x, col_y, col_z = st.columns(3)
-    col_x.metric("Alternances réelles", runs, help="Nombre de fois où l'on est passé d'une année normale à extrême, ou inversement.")
-    col_y.metric("Alternances théoriques (Hasard)", f"{esp_runs:.1f}", help="Ce que les mathématiques prévoient si les années sont 100% indépendantes.")
-    col_z.metric("Score Z (Écart)", f"{z_score:.2f}", help="S'il est entre -1.96 et 1.96, les événements sont prouvés comme étant aléatoires.")
-    
-    # 5. Conclusion dynamique pour la direction
-    if abs(z_score) < 1.96:
-        st.success(f"✅ **Démonstration Mathématique :** Le Score Z ({z_score:.2f}) est fermement compris dans l'intervalle de confiance [-1.96, 1.96]. \n\n"
-                   f"**Ce que cela signifie pour la direction :** Le fait que plusieurs crises se soient produites 2 ans de suite par le passé relève d'une stricte **coïncidence probabiliste** et non d'un cycle hydrologique. Les crues sont des événements 100% indépendants. Il est donc mathématiquement erroné d'utiliser le chiffre de 40% pour prédire l'année prochaine. Le véritable risque de récurrence l'année prochaine est égal à la probabilité de base (environ {prob_extreme * 100:.1f}%).")
-    else:
-        st.warning(f"⚠️ **Démonstration Mathématique :** Le Score Z ({z_score:.2f}) dépasse le seuil d'indépendance de 1.96. \n\n"
-                   "**Ce que cela signifie pour la direction :** Le test prouve qu'il y a bien un phénomène de regroupement ('clustering') non-aléatoire sur ce bassin. Les années humides ont tendance à s'enchaîner anormalement. La crainte de la direction est justifiée : le risque de 40% de récurrence doit être pris au sérieux pour l'année prochaine.")
+        # 6. Conclusion dynamique pour la direction
+        if abs(z_score) < 1.96:
+            st.success(f"✅ **Démonstration Mathématique :** Notre historique se situe parfaitement dans la zone bleue (Score Z = {z_score:.2f}). \n\n"
+                       f"**Ce que cela signifie pour la direction :** Le fait que plusieurs crises se soient produites 2 ans de suite par le passé relève d'une stricte **coïncidence probabiliste** et non d'un cycle hydrologique. Les crues sont des événements 100% indépendants. Il est donc mathématiquement erroné d'utiliser le chiffre de 40% pour prédire l'année prochaine. Le véritable risque de récurrence l'année prochaine est égal à la probabilité de base.")
+        else:
+            st.warning(f"⚠️ **Démonstration Mathématique :** Notre historique sort de la zone bleue du hasard (Score Z = {z_score:.2f}). \n\n"
+                       "**Ce que cela signifie pour la direction :** Le test prouve qu'il y a bien un phénomène de regroupement ('clustering') non-aléatoire sur ce bassin. Les années humides ont tendance à s'enchaîner anormalement. La crainte de la direction est justifiée : le risque de récurrence (40%) doit être pris au sérieux pour l'année prochaine.")
